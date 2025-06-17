@@ -5,7 +5,10 @@ import os
 
 app = Flask(__name__)
 
+# Doğrulama için kullanılacak token
 VERIFY_TOKEN = "nasifogullari_token"
+
+# Ortam değişkenlerinden access token ve OpenAI API key'i al
 PAGE_ACCESS_TOKEN = os.environ.get("PAGE_ACCESS_TOKEN")
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 
@@ -24,28 +27,33 @@ def webhook():
 
     elif request.method == 'POST':
         data = request.get_json()
+        print("\n=== Gelen Veri ===\n", data)
         try:
-            for entry in data["entry"]:
-                for msg in entry["messaging"]:
-                    if "message" in msg:
-                        sender_id = msg["sender"]["id"]
-                        message_text = msg["message"].get("text")
+            for entry in data.get("entry", []):
+                for messaging_event in entry.get("messaging", []):
+                    if messaging_event.get("message"):
+                        sender_id = messaging_event["sender"]["id"]
+                        message_text = messaging_event["message"].get("text")
                         if message_text:
-                            cevap = ask_gpt(message_text)
-                            send_message(sender_id, cevap)
+                            reply = ask_gpt(message_text)
+                            send_message(sender_id, reply)
         except Exception as e:
-            print("HATA:", e)
+            print("\n!!! HATA !!!\n", str(e))
         return "OK", 200
 
 def ask_gpt(message):
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[
-            {"role": "system", "content": "Sen bir Instagram müşteri destek asistanısın. Kısa, samimi ve net cevaplar ver."},
-            {"role": "user", "content": message}
-        ]
-    )
-    return response["choices"][0]["message"]["content"]
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "Sen bir Instagram destek asistanısın. Kısa, samimi, net cevaplar ver."},
+                {"role": "user", "content": message}
+            ]
+        )
+        return response["choices"][0]["message"]["content"]
+    except Exception as e:
+        print("\n[OpenAI Hatası]", str(e))
+        return "Şu anda yanıt veremiyorum. Lütfen daha sonra tekrar deneyin."
 
 def send_message(user_id, text):
     url = f"https://graph.facebook.com/v19.0/me/messages?access_token={PAGE_ACCESS_TOKEN}"
@@ -54,7 +62,11 @@ def send_message(user_id, text):
         "message": {"text": text}
     }
     headers = {"Content-Type": "application/json"}
-    requests.post(url, json=data, headers=headers)
+    try:
+        response = requests.post(url, json=data, headers=headers)
+        print("\n=== Facebook Yanıtı ===\n", response.status_code, response.text)
+    except Exception as e:
+        print("\n[Facebook API Hatası]", str(e))
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
