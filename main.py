@@ -9,6 +9,10 @@ VERIFY_TOKEN = "nasifogullari_token"
 PAGE_ACCESS_TOKEN = os.environ.get("PAGE_ACCESS_TOKEN")
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 
+@app.route('/', methods=['GET'])
+def home():
+    return "Webhook endpoint is working", 200
+
 @app.route('/webhook', methods=['GET', 'POST'])
 def webhook():
     if request.method == 'GET':
@@ -52,6 +56,5 @@ def send_message(user_id, text):
     headers = {"Content-Type": "application/json"}
     requests.post(url, json=data, headers=headers)
 
-# ✅ BU KISIM ZORUNLU: Render için portu 0.0.0.0'da aç
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
