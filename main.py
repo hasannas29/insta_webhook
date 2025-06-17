@@ -19,9 +19,9 @@ app = Flask(__name__)
 
 # Kullanıcı mesaj zamanları (rate limit)
 user_last_message_time = {}
-RATE_LIMIT_SECONDS = 30
+RATE_LIMIT_SECONDS = 30  # 30 saniyede birden fazla mesaj atanı engellenir
 
-# GPT prompt
+# GPT için sistem prompt'u
 def get_prompt():
     return """
     Sen Nasıfoğulları Reklam Ajansı'nın dijital reklam danışmanısın.
@@ -50,13 +50,13 @@ def get_gpt_response(user_message):
             ]
         )
         result = response['choices'][0]['message']['content']
-        print("GPT CEVABI:", result)  # LOG BURAYA DÜŞECEK
+        print("GPT CEVABI:", result)
         return result
     except Exception as e:
         print("GPT Hatası:", e)
         return "Şu anda teknik bir problem yaşıyoruz, birazdan tekrar dene lütfen."
 
-# Meta mesaj gönder
+# Meta API ile mesaj gönder
 def send_message(recipient_id, message_text):
     try:
         url = f"https://graph.facebook.com/v18.0/me/messages?access_token={PAGE_ACCESS_TOKEN}"
@@ -69,14 +69,14 @@ def send_message(recipient_id, message_text):
     except Exception as e:
         print("Meta API Hatası:", e)
 
-# Webhook doğrulama
+# Webhook doğrulama (GET)
 @app.route('/', methods=['GET'])
 def verify():
     if request.args.get('hub.mode') == 'subscribe' and request.args.get('hub.verify_token') == VERIFY_TOKEN:
         return request.args.get('hub.challenge'), 200
     return 'Invalid verification token', 403
 
-# Webhook mesaj işleme
+# Webhook mesaj yakalama (POST)
 @app.route('/webhook', methods=['POST'])
 def webhook():
     try:
@@ -96,6 +96,7 @@ def webhook():
 
                             if now - last_time < RATE_LIMIT_SECONDS:
                                 warning = "Lütfen mesajlarınızı peş peşe göndermeyin. Yanıtlamak için zaman tanıyın. 🙂"
+                                print("Spam engellendi:", sender_id)
                                 send_message(sender_id, warning)
                             else:
                                 user_last_message_time[sender_id] = now
@@ -105,7 +106,7 @@ def webhook():
         return "ok", 200
     except Exception as e:
         print("Webhook Hatası:", e)
-        return "ok", 200
+        return "ok", 200  # Hata olsa bile Meta'ya 200 dön, webhook kapanmasın
 
 # Render başlatıcı
 if __name__ == '__main__':
