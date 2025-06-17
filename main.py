@@ -102,6 +102,7 @@ def webhook():
                                 # Zaman güncelle ve cevabı gönder
                                 user_last_message_time[sender_id] = now
                                 reply = get_gpt_response(user_message)
+                                print("GPT CEVABI:", reply)
                                 send_message(sender_id, reply)
 
         return "ok", 200
