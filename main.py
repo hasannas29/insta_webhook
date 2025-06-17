@@ -17,11 +17,11 @@ openai.api_key = OPENAI_API_KEY
 # Flask uygulaması
 app = Flask(__name__)
 
-# 🛡️ Kullanıcı mesaj zamanları (basit rate limit için)
+# Kullanıcı mesaj zamanları (rate limit)
 user_last_message_time = {}
-RATE_LIMIT_SECONDS = 30  # 30 saniyede birden fazla mesaj atanı engeller
+RATE_LIMIT_SECONDS = 30
 
-# 📢 GPT'ye verilecek ikna odaklı prompt
+# GPT prompt
 def get_prompt():
     return """
     Sen Nasıfoğulları Reklam Ajansı'nın dijital reklam danışmanısın.
@@ -34,11 +34,9 @@ def get_prompt():
         • Profesyonel tasarım
         • Dönüşüm artıran strateji
         • Sektöre özel hedefleme ve kampanya
-    - Her cevabın kısa, ikna edici ve harekete geçirici olmalı.
-    - Asla yapay zekâ olduğunu belirtme.
 
-    Cevaplarını sıcak, samimi ama profesyonel tut.
-    Sonunda mutlaka harekete geçirici bir çağrı ekle: "İstersen sana özel plan yapalım", "Uygun musun hemen başlayalım?" gibi.
+    Cevapların kısa, ikna edici ve harekete geçirici olmalı.
+    Samimi ama profesyonel konuş, asla yapay zekâ olduğunu söyleme.
     """
 
 # GPT'den cevap al
@@ -51,7 +49,9 @@ def get_gpt_response(user_message):
                 {"role": "user", "content": user_message}
             ]
         )
-        return response['choices'][0]['message']['content']
+        result = response['choices'][0]['message']['content']
+        print("GPT CEVABI:", result)  # LOG BURAYA DÜŞECEK
+        return result
     except Exception as e:
         print("GPT Hatası:", e)
         return "Şu anda teknik bir problem yaşıyoruz, birazdan tekrar dene lütfen."
@@ -95,23 +95,19 @@ def webhook():
                             last_time = user_last_message_time.get(sender_id, 0)
 
                             if now - last_time < RATE_LIMIT_SECONDS:
-                                # Spam atıyorsa uyar, cevap verme
                                 warning = "Lütfen mesajlarınızı peş peşe göndermeyin. Yanıtlamak için zaman tanıyın. 🙂"
                                 send_message(sender_id, warning)
                             else:
-                                # Zaman güncelle ve cevabı gönder
                                 user_last_message_time[sender_id] = now
                                 reply = get_gpt_response(user_message)
-                                print("GPT CEVABI:", reply)
                                 send_message(sender_id, reply)
 
         return "ok", 200
     except Exception as e:
         print("Webhook Hatası:", e)
-        return "ok", 200  # Meta hata dönerse webhook devre dışı kalır, her zaman 200 dön!
+        return "ok", 200
 
-# Render çalıştırması
+# Render başlatıcı
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port)
-
