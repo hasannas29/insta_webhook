@@ -15,7 +15,7 @@ def verify():
 @app.route('/webhook', methods=['POST'])
 def webhook():
     data = request.get_json()
-    print("GELEN MESAJ:", data)
+    print("GELEN VERİ:", data)
     return "OK", 200
 
 if __name__ == '__main__':
