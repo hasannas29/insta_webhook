@@ -9,23 +9,23 @@ VERIFY_TOKEN = "nasifogullari_token"
 PAGE_ACCESS_TOKEN = os.environ.get("PAGE_ACCESS_TOKEN")
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 
-@app.route("/webhook", methods=["GET", "POST"])
+@app.route('/webhook', methods=['GET', 'POST'])
 def webhook():
-    if request.method == "GET":
+    if request.method == 'GET':
         token = request.args.get("hub.verify_token")
         challenge = request.args.get("hub.challenge")
         if token == VERIFY_TOKEN:
             return challenge, 200
         return "Token yanlış!", 403
 
-    elif request.method == "POST":
+    elif request.method == 'POST':
         data = request.get_json()
         try:
-            for entry in data.get("entry", []):
-                for messaging in entry.get("messaging", []):
-                    sender_id = messaging["sender"]["id"]
-                    if "message" in messaging:
-                        message_text = messaging["message"].get("text")
+            for entry in data["entry"]:
+                for msg in entry["messaging"]:
+                    if "message" in msg:
+                        sender_id = msg["sender"]["id"]
+                        message_text = msg["message"].get("text")
                         if message_text:
                             cevap = ask_gpt(message_text)
                             send_message(sender_id, cevap)
@@ -33,25 +33,25 @@ def webhook():
             print("HATA:", e)
         return "OK", 200
 
-def ask_gpt(metin):
-    cevap = openai.ChatCompletion.create(
+def ask_gpt(message):
+    response = openai.ChatCompletion.create(
         model="gpt-4",
         messages=[
-            {"role": "system", "content": "Kısa, samimi, yardımcı bir Instagram DM asistanısın."},
-            {"role": "user", "content": metin}
+            {"role": "system", "content": "Sen bir Instagram müşteri destek asistanısın. Kısa, samimi ve net cevaplar ver."},
+            {"role": "user", "content": message}
         ]
     )
-    return cevap.choices[0].message.content.strip()
+    return response["choices"][0]["message"]["content"]
 
-def send_message(kime, mesaj):
+def send_message(user_id, text):
     url = f"https://graph.facebook.com/v19.0/me/messages?access_token={PAGE_ACCESS_TOKEN}"
     data = {
-        "recipient": {"id": kime},
-        "message": {"text": mesaj}
+        "recipient": {"id": user_id},
+        "message": {"text": text}
     }
     headers = {"Content-Type": "application/json"}
-    r = requests.post(url, json=data, headers=headers)
-    print("Mesaj gönderildi:", r.text)
+    requests.post(url, json=data, headers=headers)
 
-if __name__ == "__main__":
-    app.run(port=5000)
+# ✅ BU KISIM ZORUNLU: Render için portu 0.0.0.0'da aç
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
