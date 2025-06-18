@@ -42,6 +42,7 @@ def get_prompt():
 # GPT'den yanıt al
 def get_gpt_response(user_message):
     try:
+        print("📤 GPT'ye giden mesaj:", user_message)
         response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[
