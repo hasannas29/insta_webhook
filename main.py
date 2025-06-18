@@ -9,7 +9,7 @@ VERIFY_TOKEN = "nasifogullari_token"
 PAGE_ACCESS_TOKEN = os.environ.get("PAGE_ACCESS_TOKEN")
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 
-# Webhook doğrulama ve mesaj işleme
+
 @app.route('/webhook', methods=['GET', 'POST'])
 def webhook():
     if request.method == 'GET':
@@ -46,18 +46,34 @@ def webhook():
             return "bad request", 400
 
 
-# GPT yanıtı üret (1900 karakter sınırı)
+# GPT yanıtı üret (sadece reklam konularına odaklı asistan)
 def get_gpt_response(user_message):
     try:
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "Sen Instagram müşteri asistanısın. Kısa, net ve kibarca cevap ver."},
+                {
+                    "role": "system",
+                    "content": (
+                        "Sen Nasıfoğulları Reklam Ajansı'nın dijital müşteri asistanısın. "
+                        "Sadece şu konularda bilgi ver:\n"
+                        "- Sosyal medya etkileşimi\n"
+                        "- Düşük satışlar\n"
+                        "- Takipçi ilgisizliği\n"
+                        "- Instagram/Facebook reklam performansı\n"
+                        "- 15.000 TL'lik reklam setimizin satışı\n\n"
+                        "Konu dışında bir şey sorulursa şöyle yanıt ver:\n"
+                        '“Bu hesap yalnızca dijital reklam çözümleri için hizmet vermektedir.”\n\n'
+                        "Satış odaklı konuş. Fiyat sorulursa 15.000 TL olduğunu belirt. "
+                        "Etkileşim azlığı, boşa giden içerikler gibi acı noktalara değin. "
+                        "Her mesaj bir satış fırsatıdır. Asla boş konuşma. Kısa, net, ikna edici ol."
+                    )
+                },
                 {"role": "user", "content": user_message}
             ]
         )
         result = response['choices'][0]['message']['content']
-        result = result[:1900]  # Meta karakter sınırı için kırpma
+        result = result[:1900]
         print("✅ GPT CEVABI:", result)
         return result
     except Exception as e:
@@ -65,7 +81,6 @@ def get_gpt_response(user_message):
         return "Şu anda teknik bir problem yaşıyoruz, lütfen daha sonra tekrar dene."
 
 
-# Instagram'a mesaj gönder
 def send_message(recipient_id, message_text):
     url = f"https://graph.facebook.com/v18.0/me/messages?access_token={PAGE_ACCESS_TOKEN}"
     headers = {"Content-Type": "application/json"}
@@ -85,7 +100,6 @@ def send_message(recipient_id, message_text):
         print("❌ MESAJ GÖNDERME HATASI:", e)
 
 
-# Sunucu başlat (Render & local uyumlu)
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
