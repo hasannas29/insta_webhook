@@ -45,7 +45,7 @@ def webhook():
 def get_gpt_response(user_message):
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-4",
+            model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "Sen Instagram müşteri asistanısın. Kısa, net ve kibarca cevap ver."},
                 {"role": "user", "content": user_message}
