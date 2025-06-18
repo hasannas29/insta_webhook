@@ -9,39 +9,37 @@ VERIFY_TOKEN = "nasifogullari_token"
 PAGE_ACCESS_TOKEN = os.environ.get("PAGE_ACCESS_TOKEN")
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 
-
-# Basit doğrulama endpoint'i (Meta webhook doğrulaması için)
-@app.route('/webhook', methods=['GET'])
-def verify():
-    if request.args.get("hub.mode") == "subscribe" and request.args.get("hub.verify_token") == VERIFY_TOKEN:
-        print("WEBHOOK DOĞRULANDI ✅")
-        return request.args.get("hub.challenge")
-    print("❌ WEBHOOK DOĞRULAMA BAŞARISIZ")
-    return "Verification token mismatch", 403
-
-
-# Webhook mesajlarını alma ve işleme
-@app.route('/webhook', methods=['POST'])
+# Meta Webhook doğrulama (GET)
+@app.route('/webhook', methods=['GET', 'POST'])
 def webhook():
-    data = request.get_json()
-    print("📩 Gelen VERİ:", data)
+    if request.method == 'GET':
+        if request.args.get("hub.mode") == "subscribe" and request.args.get("hub.verify_token") == VERIFY_TOKEN:
+            print("WEBHOOK DOĞRULANDI ✅")
+            return request.args.get("hub.challenge")
+        print("❌ WEBHOOK DOĞRULAMA BAŞARISIZ")
+        return "Verification token mismatch", 403
 
-    if data["object"] == "instagram":
-        for entry in data["entry"]:
-            for change in entry["changes"]:
-                if change["field"] == "messages":
-                    sender_id = change["value"]["sender"]["id"]
-                    user_message = change["value"]["message"]["text"]
+    # POST: mesaj işleme
+    if request.method == 'POST':
+        data = request.get_json()
+        print("📩 Gelen VERİ:", data)
 
-                    # GPT'den cevap al
-                    reply = get_gpt_response(user_message)
+        if data.get("object") == "instagram":
+            for entry in data.get("entry", []):
+                for change in entry.get("changes", []):
+                    if change.get("field") == "messages":
+                        sender_id = change["value"]["sender"]["id"]
+                        user_message = change["value"]["message"]["text"]
 
-                    # Cevabı kullanıcıya gönder
-                    send_message(sender_id, reply)
-    return "ok", 200
+                        # GPT yanıtı al
+                        reply = get_gpt_response(user_message)
+
+                        # Mesajı gönder
+                        send_message(sender_id, reply)
+        return "ok", 200
 
 
-# GPT'den yanıt al
+# GPT yanıtı üret
 def get_gpt_response(user_message):
     try:
         response = openai.ChatCompletion.create(
@@ -59,7 +57,7 @@ def get_gpt_response(user_message):
         return "Şu anda teknik bir problem yaşıyoruz, birazdan tekrar dene lütfen."
 
 
-# Mesajı Instagram üzerinden gönder
+# Instagram'a cevap gönder
 def send_message(recipient_id, message_text):
     url = f"https://graph.facebook.com/v18.0/me/messages?access_token={PAGE_ACCESS_TOKEN}"
     headers = {"Content-Type": "application/json"}
@@ -73,8 +71,7 @@ def send_message(recipient_id, message_text):
     print("📤 Mesaj gönderildi:", response.text)
 
 
-# Sunucu başlat
-import os
-port = int(os.environ.get("PORT", 10000))
-app.run(host='0.0.0.0', port=port)
-
+# Sunucu başlat (Render uyumlu)
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
