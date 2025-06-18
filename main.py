@@ -43,13 +43,13 @@ def get_prompt():
 def get_gpt_response(user_message):
     try:
         print("📤 GPT'ye giden mesaj:", user_message)
-        response = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": get_prompt()},
-                {"role": "user", "content": user_message}
-            ]
-        )
+       response = openai.ChatCompletion.create(
+    model="gpt-4",
+    messages=[
+        {"role": "system", "content": "Sen Instagram müşteri asistanısın. Kısa, net ve kibarca cevap ver."},
+        {"role": "user", "content": user_message}
+    ]
+)
         result = response['choices'][0]['message']['content']
         print("✅ GPT CEVABI:", result)
         return result
